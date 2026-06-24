@@ -1,26 +1,22 @@
 // Jenkinsfile - Pipeline CI/CD SentimentAI
 pipeline {
-    agent any // s'exécute sur n'importe quel agent disponible
+    agent any
 
     environment {
         IMAGE_NAME = 'sentiment-ai'
-        // REMPLACEZ 'VOTRE_PSEUDO' CI-DESSOUS
-        REGISTRY   = 'ghcr.io/VOTRE_PSEUDO' 
-        
-        // Chaque build produit une image taguée de façon unique et traçable
+        // REMPLACEZ 'ElodieCecile2022' par votre vrai pseudo GitHub si nécessaire
+        REGISTRY   = 'ghcr.io/ElodieCecile2022' 
         IMAGE_TAG  = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
     }
 
     stages {
-        // Les 4 stages seront définis ici
         stage('Checkout') {
             steps {
                 checkout scm
-                echo "Branche : ${env.BRANCH_NAME}"
-                echo "Commit  : ${env.GIT_COMMIT}"
                 sh 'git log --oneline -5'
             }
         }
+
         stage('Lint') {
             steps {
                 sh '''
@@ -35,30 +31,29 @@ pipeline {
 
         stage('Build & Test') {
             steps {
-        // C'est ici que vos commandes doivent être placées !
                 sh 'docker compose build'
                 sh 'docker compose run --rm app pytest'
-                  }
-                                }
-            
+            }
+            // Le bloc post d'un stage doit être bien aligné ici
             post {
                 failure {
-                    echo 'Tests échoués ou coverage insuffisant (< 70%)'
+                    echo 'Tests échoués ou coverage insuffisant.'
                 }
             }
         }
-        stage('Build') {
+
+        stage('Push') {
+            when { branch 'main' }
             steps {
-                echo "Construction de l'image..."
+                echo "Construction et envoi de l'image..."
                 sh 'docker build -t ${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG} .'
+                // Ajoutez ici le 'docker push' si vous avez configuré le login au registre
             }
         }
-        // Ajoutez vos autres stages (Test, Push, etc.) ici
     }
 
     post {
         always {
-            // Nettoyer les conteneurs de test, qu'il y ait succès ou échec
             sh 'docker compose down -v 2>/dev/null || true'
         }
         success {
