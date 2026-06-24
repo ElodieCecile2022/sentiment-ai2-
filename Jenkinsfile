@@ -31,8 +31,9 @@ pipeline {
 
         stage('Build & Test') {
             steps {
-                sh 'docker-compose build'
-                sh 'docker-compose run --rm app pytest'
+                // Remplacement de docker-compose par docker build et run
+                sh 'docker build -t sentiment-ai-test .'
+                sh 'docker run --rm sentiment-ai-test pytest'
             }
             post {
                 failure {
@@ -53,7 +54,8 @@ pipeline {
 
     post {
         always {
-            sh 'docker-compose down -v 2>/dev/null || true'
+            // Nettoyage simplifié sans docker-compose
+            echo "Nettoyage terminé."
         }
         success {
             echo "Pipeline réussi ! Image : ${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"
