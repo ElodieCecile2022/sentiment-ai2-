@@ -10,6 +10,10 @@ model = SentimentModel()
 def read_root():
     return {"message": "Bienvenue sur l'API d'analyse de sentiment"}
 
+@app.get("/health")
+def health_check():
+    return {"status": "ok"}
+
 @app.post("/predict", response_model=PredictionResponse)
 def predict(request: PredictionRequest):
     # Appel de la méthode predict du modèle
