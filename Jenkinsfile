@@ -4,6 +4,7 @@ pipeline {
 
     environment {
         IMAGE_NAME = 'sentiment-ai'
+        // Assurez-vous que ce registre est bien configuré sur votre serveur
         REGISTRY   = 'ghcr.io/ElodieCecile2022' 
         IMAGE_TAG  = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
     }
@@ -15,6 +16,7 @@ pipeline {
                 sh 'git log --oneline -5'
             }
         }
+
         stage('Lint') {
             steps {
                 sh '''
@@ -29,8 +31,8 @@ pipeline {
 
         stage('Build & Test') {
             steps {
-                sh 'docker compose build'
-                sh 'docker compose run --rm app pytest'
+                sh 'docker-compose build'
+                sh 'docker-compose run --rm app pytest'
             }
             post {
                 failure {
@@ -47,11 +49,11 @@ pipeline {
                 sh 'docker push ${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}'
             }
         }
-    } // <-- Ajoutée ici pour fermer le bloc stages
+    }
 
     post {
         always {
-            sh 'docker compose down -v 2>/dev/null || true'
+            sh 'docker-compose down -v 2>/dev/null || true'
         }
         success {
             echo "Pipeline réussi ! Image : ${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"
