@@ -13,7 +13,7 @@ pipeline {
         }
         stage ('Lint') {
             steps {
-                // Utilisation de WORKSPACE et /code pour un montage fiable
+                // Utilisation explicite de ${WORKSPACE} pour pointer vers le répertoire du projet
                 sh "docker run --rm -v ${WORKSPACE}:/code -w /code alpine/flake8:latest --max-line-length=100 --ignore=W292 src/"
             }
         }
