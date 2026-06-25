@@ -13,12 +13,8 @@ pipeline {
         }
         stage ('Lint') {
             steps {
-                sh """
-                echo "--- Diagnostic du répertoire /app ---"
-                ls -R /app
-                echo "--- Lancement du Lint ---"
-                docker run --rm -v ${env.WORKSPACE}:/app alpine/flake8:latest --max-line-length=100 --ignore=W292 /app/src/
-                """
+                // Utilisation de WORKSPACE et /code pour un montage fiable
+                sh "docker run --rm -v ${WORKSPACE}:/code -w /code alpine/flake8:latest --max-line-length=100 --ignore=W292 src/"
             }
         }
         stage ('IaC Validate') {
@@ -52,8 +48,8 @@ pipeline {
             steps {
                 withSonarQubeEnv('sonarqube') {
                     sh """
-                    docker run --rm --network cicd-network -v ${WORKSPACE}:/app \
-                    -w /app \
+                    docker run --rm --network cicd-network -v ${WORKSPACE}:/code \
+                    -w /code \
                     -e SONAR_HOST_URL="${SONAR_HOST_URL}" \
                     -e SONAR_TOKEN="${SONARQUBE_TOKEN}" \
                     sonarsource/sonar-scanner-cli:latest \
