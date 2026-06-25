@@ -13,13 +13,12 @@ pipeline {
         }
         stage ('Lint') {
             steps {
-                sh """
-                docker run --rm \
-                -v ${WORKSPACE}:/app \
-                -w /app \
-                python:3.12-slim \
-                sh -c "pip install flake8 -q && flake8 src/ --max-line-length=100 --ignore=W292"
-                """
+                script {
+                    // Installation locale de flake8 pour éviter les problèmes de montage Docker
+                    sh 'python3 -m pip install --user flake8 || pip install --user flake8'
+                    // Exécution de la vérification de style
+                    sh 'ls -d src && ~/.local/bin/flake8 src/ --max-line-length=100 --ignore=W292'
+                }
             }
         }
         stage ('IaC Validate') {
@@ -53,8 +52,8 @@ pipeline {
             steps {
                 withSonarQubeEnv('sonarqube') {
                     sh """
-                    docker run --rm --network cicd-network -v ${WORKSPACE}:/app \
-                    -w /app \
+                    docker run --rm --network cicd-network -v "\$(pwd)":"\$(pwd)" \
+                    -w "\$(pwd)" \
                     -e SONAR_HOST_URL="${SONAR_HOST_URL}" \
                     -e SONAR_TOKEN="${SONARQUBE_TOKEN}" \
                     sonarsource/sonar-scanner-cli:latest \
