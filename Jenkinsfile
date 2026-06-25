@@ -2,7 +2,7 @@ pipeline {
     agent any
     environment {
         IMAGE_NAME = 'sentiment-ai'
-        REGISTRY = 'ghcr.io/VOTRE_PSEUDO' // Remplacez par votre pseudo
+        REGISTRY = 'ghcr.io/Elodie2023' 
         IMAGE_TAG = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
     }
     stages {
@@ -14,6 +14,9 @@ pipeline {
         stage ('Lint') {
             steps {
                 sh """
+                echo "--- DIAGNOSTIC DU REPERTOIRE ---"
+                ls -la
+                
                 docker run --rm \
                 -v ${WORKSPACE}:${WORKSPACE} \
                 -w ${WORKSPACE} \
