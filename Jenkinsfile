@@ -13,8 +13,6 @@ pipeline {
         }
         stage ('Lint') {
             steps {
-                // On utilise une image Docker qui a déjà tout ce qu'il faut
-                // On monte le répertoire courant dans /app
                 sh "docker run --rm -v ${env.WORKSPACE}:/app -w /app alpine/flake8:latest --max-line-length=100 --ignore=W292 src/"
             }
         }
@@ -44,7 +42,6 @@ pipeline {
                 }
             }
         }
-        // ... (le reste du pipeline reste identique)
         stage ('SonarQube Analysis') {
             environment { SONARQUBE_TOKEN = credentials('sonar-token') }
             steps {
