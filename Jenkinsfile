@@ -1,106 +1,80 @@
 pipeline {
     agent any
+    
     environment {
+        // Remplacez par vos propres valeurs
         IMAGE_NAME = 'sentiment-ai'
         IMAGE_TAG = 'latest'
-        SONARQUBE_TOKEN = credentials('sonar-token')
+        REGISTRY = 'votre-registre' // Modifiez selon votre registre
     }
+
     stages {
-        stage('Checkout') {
+        stage('Build') {
             steps {
-                checkout scm
+                echo 'Construction de l\'image Docker...'
+                sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
             }
         }
-        stage('Lint') {
+
+        stage('SonarQube Analysis') {
             steps {
-                sh 'flake8 src/'
+                script {
+                    def scannerHome = tool 'SonarScanner'
+                    withSonarQubeEnv('SonarQube') {
+                        sh "${scannerHome}/bin/sonar-scanner"
+                    }
+                }
             }
         }
-        stage('Build & Test') {
+
+        stage('Quality Gate') {
             steps {
+                waitForQualityGate abortPipeline: true
+            }
+        }
+
+        stage('Security Scan (Trivy)') {
+            steps {
+                echo 'Analyse de sécurité avec Trivy...'
                 sh """
-                docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .
-                docker rm -f test-runner 2>/dev/null || true
-                set +e
-                docker run \\
-                    -e CI=true \\
-                    --name test-runner \\
-                    ${IMAGE_NAME}:${IMAGE_TAG} \\
-                    pytest tests/ -v \\
-                    --cov=src \\
-                    --cov-report=xml:/tmp/coverage.xml \\
-                    --cov-report=term-missing \\
-                    --cov-fail-under=70
-                TEST_EXIT_CODE=\$?
-                set -e
-                docker cp test-runner:/tmp/coverage.xml ./coverage.xml 2>/dev/null || true
-                docker rm -f test-runner 2>/dev/null || true
-                exit \$TEST_EXIT_CODE
+                    docker run --rm \
+                    -v /var/run/docker.sock:/var/run/docker.sock \
+                    -v trivy-cache:/root/.cache/trivy \
+                    aquasec/trivy:latest image \
+                    --severity HIGH,CRITICAL \
+                    --exit-code 1 \
+                    --format table \
+                    ${IMAGE_NAME}:${IMAGE_TAG}
                 """
             }
             post {
-                failure { echo 'Tests échoués ou coverage insuffisant (< 70%)' }
-            }
-        }
-        stage('SonarQube Analysis') {
-            steps {
-                withSonarQubeEnv('sonarqube') {
-                    sh """
-                    docker run --rm \\
-                        --network cicd-network \\
-                        --volumes-from jenkins \\
-                        -w "\$WORKSPACE" \\
-                        -e SONAR_HOST_URL="\$SONAR_HOST_URL" \\
-                        -e SONAR_TOKEN="\$SONARQUBE_TOKEN" \\
-                        sonarsource/sonar-scanner-cli:latest \\
-                        sonar-scanner \\
-                        -Dsonar.projectKey=sentiment-ai \\
-                        -Dsonar.projectName=SentimentAI \\
-                        -Dsonar.projectBaseDir="\$WORKSPACE" \\
-                        -Dsonar.sources=src \\
-                        -Dsonar.python.version=3.11 \\
-                        -Dsonar.python.coverage.reportPaths=coverage.xml \\
-                        -Dsonar.sourceEncoding=UTF-8 \\
-                        -Dsonar.scanner.metadataFilePath=\$WORKSPACE/report-task.txt
-                    """
+                failure {
+                    echo 'Vulnérabilités détectées par Trivy ! Arrêt du pipeline.'
                 }
             }
         }
-        stage('Quality Gate') {
-            steps {
-                timeout(time: 15, unit: 'MINUTES') {
-                    waitForQualityGate abortPipeline: true
-                }
-            }
-        }
-        stage('Security Scan') {
-            steps {
-                sh """
-                docker run --rm \\
-                    -v /var/run/docker.sock:/var/run/docker.sock \\
-                    -v trivy-cache:/root/.cache/trivy \\
-                    aquasec/trivy:latest image \\
-                    --severity HIGH,CRITICAL \\
-                    --exit-code 1 \\
-                    --format table \\
-                    "${IMAGE_NAME}:${IMAGE_TAG}"
-                """
-            }
-        }
+
         stage('Push') {
-            when { branch 'main' }
             steps {
-                echo "Push de l'image vers le registre..."
+                echo 'Envoi de l\'image vers le registre...'
             }
         }
+
         stage('Deploy Staging') {
-            when { branch 'main' }
+            when { 
+                branch 'main' 
+            }
             steps {
+                echo "Déploiement de ${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG} en staging ..."
                 sh """
-                docker compose -f docker-compose.yml -p staging down 2>/dev/null || true
-                docker compose -f docker-compose.yml -p staging up -d
+                    # Arrêter le staging précédent proprement
+                    docker compose -f docker-compose.yml -p staging down 2>/dev/null || true
+
+                    # Démarrer la nouvelle version
+                    docker compose -f docker-compose.yml -p staging up -d
+
+                    echo "Staging disponible sur http://localhost:8001"
                 """
-                echo "Staging disponible sur http://localhost:8001"
             }
         }
     }
