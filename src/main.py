@@ -1,21 +1,15 @@
 from fastapi import FastAPI
-from src.schemas import PredictionRequest, PredictionResponse
-from src.model import SentimentModel
+from .model import Model
 
-# Initialisation de l'application FastAPI et du modèle
-app = FastAPI(title="Sentiment Analysis API")
-model = SentimentModel()
+app = FastAPI()
+model = Model()
 
-@app.get("/")
-def read_root():
-    return {"message": "Bienvenue sur l'API d'analyse de sentiment"}
 
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
 
-@app.post("/predict", response_model=PredictionResponse)
-def predict(request: PredictionRequest):
-    # Appel de la méthode predict du modèle
-    result = model.predict(request.text)
-    return result
+
+@app.post("/predict")
+def predict(text: str):
+    return {"prediction": model.predict(text)}
