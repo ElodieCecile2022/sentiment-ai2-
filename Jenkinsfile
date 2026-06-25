@@ -2,7 +2,7 @@ pipeline {
     agent any
     environment {
         IMAGE_NAME = 'sentiment-ai'
-        REGISTRY = 'ghcr.io/Elodie2023' // Remplacez par votre pseudo GitHub
+        REGISTRY = 'ghcr.io/Elodie2023' // Pensez à remplacer VOTRE_PSEUDO
         IMAGE_TAG = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
     }
     stages {
@@ -13,13 +13,9 @@ pipeline {
         }
         stage ('Lint') {
             steps {
-                sh """
-                docker run --rm \
-                -v "\$(pwd)":"\$(pwd)" \
-                -w "\$(pwd)" \
-                python:3.12-slim \
-                sh -c "pip install flake8 -q && flake8 src/ --max-line-length=100 --ignore=W292"
-                """
+                // Installation directe de flake8 sur l'agent pour éviter les conflits de volume
+                sh 'pip install flake8'
+                sh 'flake8 src/ --max-line-length=100 --ignore=W292'
             }
         }
         stage ('IaC Validate') {
