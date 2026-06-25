@@ -2,7 +2,7 @@ pipeline {
     agent any
     environment {
         IMAGE_NAME = 'sentiment-ai'
-        REGISTRY = 'ghcr.io/Elodie2023' // Pensez à remplacer VOTRE_PSEUDO
+        REGISTRY = 'ghcr.io/Elodie2023' // REMPLACEZ PAR VOTRE PSEUDO GITHUB
         IMAGE_TAG = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
     }
     stages {
@@ -13,9 +13,13 @@ pipeline {
         }
         stage ('Lint') {
             steps {
-                // Installation directe de flake8 sur l'agent pour éviter les conflits de volume
-                sh 'pip install flake8'
-                sh 'flake8 src/ --max-line-length=100 --ignore=W292'
+                sh """
+                docker run --rm \
+                -v ${WORKSPACE}:/app \
+                -w /app \
+                python:3.12-slim \
+                sh -c "pip install flake8 -q && flake8 src/ --max-line-length=100 --ignore=W292"
+                """
             }
         }
         stage ('IaC Validate') {
@@ -49,8 +53,8 @@ pipeline {
             steps {
                 withSonarQubeEnv('sonarqube') {
                     sh """
-                    docker run --rm --network cicd-network -v "\$(pwd)":"\$(pwd)" \
-                    -w "\$(pwd)" \
+                    docker run --rm --network cicd-network -v ${WORKSPACE}:/app \
+                    -w /app \
                     -e SONAR_HOST_URL="${SONAR_HOST_URL}" \
                     -e SONAR_TOKEN="${SONARQUBE_TOKEN}" \
                     sonarsource/sonar-scanner-cli:latest \
