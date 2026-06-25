@@ -2,7 +2,7 @@ pipeline {
     agent any
     environment {
         IMAGE_NAME = 'sentiment-ai'
-        REGISTRY = 'ghcr.io/Elodie2023' 
+        REGISTRY = 'ghcr.io/Elodie2023' // Remplacez par votre pseudo GitHub
         IMAGE_TAG = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
     }
     stages {
@@ -14,12 +14,9 @@ pipeline {
         stage ('Lint') {
             steps {
                 sh """
-                echo "--- DIAGNOSTIC DU REPERTOIRE ---"
-                ls -la
-                
                 docker run --rm \
-                -v ${WORKSPACE}:${WORKSPACE} \
-                -w ${WORKSPACE} \
+                -v "\$(pwd)":"\$(pwd)" \
+                -w "\$(pwd)" \
                 python:3.12-slim \
                 sh -c "pip install flake8 -q && flake8 src/ --max-line-length=100 --ignore=W292"
                 """
@@ -56,8 +53,8 @@ pipeline {
             steps {
                 withSonarQubeEnv('sonarqube') {
                     sh """
-                    docker run --rm --network cicd-network -v ${WORKSPACE}:${WORKSPACE} \
-                    -w "${WORKSPACE}" \
+                    docker run --rm --network cicd-network -v "\$(pwd)":"\$(pwd)" \
+                    -w "\$(pwd)" \
                     -e SONAR_HOST_URL="${SONAR_HOST_URL}" \
                     -e SONAR_TOKEN="${SONARQUBE_TOKEN}" \
                     sonarsource/sonar-scanner-cli:latest \
@@ -83,7 +80,7 @@ pipeline {
                     usernameVariable: 'REGISTRY_USER',
                     passwordVariable: 'REGISTRY_PASS'
                 )]) {
-                    sh "echo $REGISTRY_PASS | docker login ghcr.io -u $REGISTRY_USER --password-stdin"
+                    sh "echo \$REGISTRY_PASS | docker login ghcr.io -u \$REGISTRY_USER --password-stdin"
                     sh "docker push $REGISTRY/${IMAGE_NAME}:${IMAGE_TAG}"
                 }
             }
