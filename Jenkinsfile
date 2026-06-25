@@ -2,7 +2,7 @@ pipeline {
     agent any
     environment {
         IMAGE_NAME = 'sentiment-ai'
-        REGISTRY = 'ghcr.io/Elodie2023' // REMPLACEZ PAR VOTRE PSEUDO GITHUB
+        REGISTRY = 'ghcr.io/ElodieCecile2022'
         IMAGE_TAG = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
     }
     stages {
@@ -13,12 +13,9 @@ pipeline {
         }
         stage ('Lint') {
             steps {
-                script {
-                    // Installation locale de flake8 pour éviter les problèmes de montage Docker
-                    sh 'python3 -m pip install --user flake8 || pip install --user flake8'
-                    // Exécution de la vérification de style
-                    sh 'ls -d src && ~/.local/bin/flake8 src/ --max-line-length=100 --ignore=W292'
-                }
+                // On utilise une image Docker qui a déjà tout ce qu'il faut
+                // On monte le répertoire courant dans /app
+                sh "docker run --rm -v ${env.WORKSPACE}:/app -w /app alpine/flake8:latest --max-line-length=100 --ignore=W292 src/"
             }
         }
         stage ('IaC Validate') {
@@ -47,13 +44,14 @@ pipeline {
                 }
             }
         }
+        // ... (le reste du pipeline reste identique)
         stage ('SonarQube Analysis') {
             environment { SONARQUBE_TOKEN = credentials('sonar-token') }
             steps {
                 withSonarQubeEnv('sonarqube') {
                     sh """
-                    docker run --rm --network cicd-network -v "\$(pwd)":"\$(pwd)" \
-                    -w "\$(pwd)" \
+                    docker run --rm --network cicd-network -v ${WORKSPACE}:/app \
+                    -w /app \
                     -e SONAR_HOST_URL="${SONAR_HOST_URL}" \
                     -e SONAR_TOKEN="${SONARQUBE_TOKEN}" \
                     sonarsource/sonar-scanner-cli:latest \
