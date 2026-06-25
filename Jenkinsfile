@@ -13,8 +13,12 @@ pipeline {
         }
         stage ('Lint') {
             steps {
-                // Modification ici : utilisation de /app/src/ pour le chemin absolu dans Docker
-                sh "docker run --rm -v ${env.WORKSPACE}:/app -w /app alpine/flake8:latest --max-line-length=100 --ignore=W292 /app/src/"
+                sh """
+                echo "--- Diagnostic du répertoire /app ---"
+                ls -R /app
+                echo "--- Lancement du Lint ---"
+                docker run --rm -v ${env.WORKSPACE}:/app alpine/flake8:latest --max-line-length=100 --ignore=W292 /app/src/
+                """
             }
         }
         stage ('IaC Validate') {
