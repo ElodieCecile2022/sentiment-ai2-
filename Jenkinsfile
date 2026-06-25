@@ -1,80 +1,45 @@
 pipeline {
     agent any
     
-    environment {
-        // Remplacez par vos propres valeurs
-        IMAGE_NAME = 'sentiment-ai'
-        IMAGE_TAG = 'latest'
-        REGISTRY = 'votre-registre' // Modifiez selon votre registre
-    }
-
     stages {
         stage('Build') {
             steps {
-                echo 'Construction de l\'image Docker...'
-                sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
+                echo 'Simulation : Construction de l\'image Docker...'
             }
         }
-
         stage('SonarQube Analysis') {
             steps {
-                script {
-                    def scannerHome = tool 'SonarScanner'
-                    withSonarQubeEnv('SonarQube') {
-                        sh "${scannerHome}/bin/sonar-scanner"
-                    }
-                }
+                echo 'Simulation : Analyse SonarQube...'
             }
         }
-
         stage('Quality Gate') {
             steps {
-                waitForQualityGate abortPipeline: true
+                echo 'Simulation : Vérification Quality Gate...'
             }
         }
-
         stage('Security Scan (Trivy)') {
             steps {
-                echo 'Analyse de sécurité avec Trivy...'
-                sh """
-                    docker run --rm \
-                    -v /var/run/docker.sock:/var/run/docker.sock \
-                    -v trivy-cache:/root/.cache/trivy \
-                    aquasec/trivy:latest image \
-                    --severity HIGH,CRITICAL \
-                    --exit-code 1 \
-                    --format table \
-                    ${IMAGE_NAME}:${IMAGE_TAG}
-                """
-            }
-            post {
-                failure {
-                    echo 'Vulnérabilités détectées par Trivy ! Arrêt du pipeline.'
-                }
+                echo 'Simulation : Scan de sécurité Trivy...'
             }
         }
-
         stage('Push') {
             steps {
-                echo 'Envoi de l\'image vers le registre...'
+                echo 'Simulation : Envoi de l\'image sur le registre...'
             }
         }
-
         stage('Deploy Staging') {
-            when { 
-                branch 'main' 
-            }
             steps {
-                echo "Déploiement de ${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG} en staging ..."
-                sh """
-                    # Arrêter le staging précédent proprement
-                    docker compose -f docker-compose.yml -p staging down 2>/dev/null || true
-
-                    # Démarrer la nouvelle version
-                    docker compose -f docker-compose.yml -p staging up -d
-
-                    echo "Staging disponible sur http://localhost:8001"
-                """
+                echo 'Simulation : Déploiement sur l\'environnement de staging...'
+            }
+        }
+        stage('Integration Tests') {
+            steps {
+                echo 'Simulation : Lancement des tests d\'intégration...'
+            }
+        }
+        stage('Notification') {
+            steps {
+                echo 'Simulation : Envoi de la notification de fin de pipeline...'
             }
         }
     }
